@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd">
+    <flow name="order-detailsFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/orderinfo/{id}" doc:name="HTTP"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <logger message="The data received from inbound is #[payload]" level="INFO" doc:name="Logger"/>
+        <set-variable variableName="request" value="#[json:/destination]" doc:name="Variable"/>
+        <logger message="The variable is #[flowVars.request]" level="INFO" doc:name="Logger"/>
+        <set-session-variable variableName="b" value="20" doc:name="Session Variable"/>
+        <set-property propertyName="no" value="#[message.inboundProperties.'http.uri.params'.id]" doc:name="Property"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="orderdetail" doc:name="VM"/>
+        <flow-ref name="order-detailsSub_Flow" doc:name="order-detailsSub_Flow"/>
+        <logger message="The end of the payload is #[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="order-detailsFlow1">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="orderdetail" doc:name="orderdetail"/>
+        <set-payload value="dfjsnkjnf" doc:name="Set Payload"/>
+        <logger message="The subflow 1:== The flow variable is #[flowVars.request] and session #[sessionVars.b]" level="INFO" doc:name="Logger"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="order" doc:name="order"/> 
+    </flow>
+    <flow name="order-detailsFlow2">
+        <vm:inbound-endpoint exchange-pattern="one-way" path="order" doc:name="order"/>
+        <set-payload value="dfjsnkjnf" doc:name="Set Payload"/>
+        <logger message="The subflow 1:== The flow variable is #[flowVars.request] and session #[sessionVars.b]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <sub-flow name="order-detailsSub_Flow">
+        <set-payload value="#[message.inboundProperties.'http.query.params'.id]" doc:name="Set Payload"/>
+        <logger message="The subflow 2: --The flow variable is #[flowVars.request] and session #[sessionVars.b]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>

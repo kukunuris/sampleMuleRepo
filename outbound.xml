@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <flow name="outboundFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="${flight-info}" doc:name="HTTP"/>
+        <http:request config-ref="HTTP_Request_Configuration" path="/united/flights/{des}" method="GET" doc:name="Get flight info">
+            <http:request-builder>
+                <http:uri-param paramName="des" value="#[message.inboundProperties.'http.query.params'.id]"/>
+            </http:request-builder>
+        </http:request>
+        <logger message="The payload is #[message.payloadAs(java.lang.String)]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <choice-exception-strategy name="Choice_Exception_Strategy">
+        <catch-exception-strategy when="#[exception.causeMatches('com.mulesoft.weave.*')]" doc:name="No flights &#8211; DW exception">
+            <set-payload value="NO FLIGHTS to #[flowVars.code +  '\n' + exception]" doc:name="Set Payload"/>
+            <set-property propertyName="http.status" value="400" doc:name="Property"/>
+            <logger level="INFO" doc:name="Logger"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy doc:name="Catch_Exception_Strategy">
+            <logger message="The data received here is #[payload] and exception is  #[org.mule.util.ExceptionUtils.getRootCause(exception).getMessage()]" level="INFO" doc:name="Logger"/>
+            <set-payload value="des value is #[message.inboundProperties.'http.query.params'.des]" doc:name="Set Payload"/>
+            <set-property propertyName="http.status" value="400" doc:name="Property"/>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+ 
+</mule>

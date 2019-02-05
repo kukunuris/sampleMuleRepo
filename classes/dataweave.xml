@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<configuration doc:name="Configuration" >
+		<expression-language>
+			<global-functions> 
+			def newUser() { return ["name" : "max"] } 
+			def upperName(user) { return user.toUpperCase() }
+			def add(a,b) {return a+b}
+			</global-functions>
+		</expression-language>
+	</configuration>
+  
+    <flow name="dataweaveFlow">
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload doc:sample="sample_data\json_1.json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	number : (payload.planeType splitBy " ")[1],
+	code: payload.code2 replace "0" with "",
+	day: (payload.takeOffDate splitBy "-")[2],
+	month: payload.takeOffDate[5..6],
+	year : payload.takeOffDate[0..3]
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="dataweaveFlow2">
+        <dw:transform-message doc:name="Transform Message" metadata:id="e43c50ce-ea4e-4df9-868b-8d675d4604ed">
+            <dw:input-payload doc:sample="sample-input.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/xml
+%function getOrderLine(){
+	(payload.OrderLine map ((OrderLine , indexOfOrderLine) -> {
+					OrderLine: {
+						OrderID: OrderLine.OrderID
+						
+					}
+				}))
+}
+---
+{
+	xml: {
+		PVR: payload.PVR,
+		(payload.Invoice map ((invoice , indexOfInvoice) -> {
+			Invoice: {
+				(Time: invoice.Time as :date {format: "yyyy-MM-dd"} as :string {format : "yyyyMMdd"}) when invoice.Time !=null,
+				(invoice.InvoiceLine map ((InvoiceLine , indexOfInvoiceLine) -> {
+					InvoiceLine: {
+						OrgID: InvoiceLine.OrgID
+						
+					}
+				}))
+			}
+		})),
+		test :getOrderLine()		
+	}
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="dataweaveFlow3">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/testdataweave" doc:name="HTTP"/>
+        <set-payload value="test" doc:name="Set Payload"/>
+        <set-variable variableName="no" value="1" doc:name="Variable"/>
+        <set-session-variable variableName="fname" value="RAJU" doc:name="Session Variable"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	id: flowVars.no,
+	name: "",
+	pincode: lookup("pincode-info",payload),
+	addition : ""
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="pincode-info">
+        <logger message="The data recieved to this flow is #[payload]" level="INFO" doc:name="Logger"/>
+        <set-payload value="test" doc:name="Set Payload"/>
+
+    </flow>
+    <flow name="dataweaveFlow1">
+        <dw:transform-message doc:name="Transform Message" metadata:id="72ab7280-ef1f-4968-8105-de86ea5e558a">
+            <dw:input-payload doc:sample="sample-input.json" mimeType="application/json"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	uppercase : upperName("abc")
+}]]></dw:set-payload>
+            <dw:set-variable variableName="test"><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	uppercase : upperName("abc")
+}]]></dw:set-variable>
+        </dw:transform-message>
+    </flow>
+</mule>
